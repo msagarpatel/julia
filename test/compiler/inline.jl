@@ -1309,6 +1309,49 @@ let src = code_typed1() do
     @test count(isnew, src.code) == 0
 end
 
+# Test that a case when `Core.finalizer` is registered interprocedurally,
+# but still eligible for SROA after inlining
+mutable struct DoAllocNoEscapeInter end
+
+let src = code_typed1() do
+        for i = 1:1000
+            obj = DoAllocNoEscapeInter()
+            finalizer(obj) do this
+                nothrow_side_effect(nothing)
+            end
+        end
+    end
+    @test count(isnew, src.code) == 0
+end
+
+function register_finalizer!(obj)
+    finalizer(obj) do this
+        nothrow_side_effect(nothing)
+    end
+end
+let src = code_typed1() do
+        for i = 1:1000
+            obj = DoAllocNoEscapeInter()
+            register_finalizer!(obj)
+        end
+    end
+    @test count(isnew, src.code) == 0
+end
+
+function genfinalizer(val)
+    return function (this)
+        nothrow_side_effect(val)
+    end
+end
+let src = code_typed1() do
+        for i = 1:1000
+            obj = DoAllocNoEscapeInter()
+            finalizer(genfinalizer(nothing), obj)
+        end
+    end
+    @test count(isnew, src.code) == 0
+end
+
 # Test that finalizer elision doesn't cause a throw to be inlined into a function
 # that shouldn't have it
 const finalizer_should_throw = Ref{Bool}(true)
@@ -1334,7 +1377,6 @@ end
 @test f_finalizer_throws()
 
 # Test finalizers with static parameters
-global last_finalizer_type::Type = Any
 mutable struct DoAllocNoEscapeSparam{T}
     x::T
     function finalizer_sparam(d::DoAllocNoEscapeSparam{T}) where {T}
