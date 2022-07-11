@@ -565,25 +565,27 @@ void jl_dump_native_impl(void *native_code,
                                      "jl_RTLD_DEFAULT_handle_pointer"));
     }
 
-    // We would like to emit an alias or an weakref alias to redirect these symbols
-    // but LLVM doesn't let us emit a GlobalAlias to a declaration...
-    // So for now we inject a definition of these functions that calls our runtime functions.
-    injectCRTAlias(*dataM, "__gnu_h2f_ieee", "julia__gnu_h2f_ieee",
-            FunctionType::get(Type::getFloatTy(Context), { Type::getHalfTy(Context) }, false));
-    injectCRTAlias(*dataM, "__extendhfsf2", "julia__gnu_h2f_ieee",
-            FunctionType::get(Type::getFloatTy(Context), { Type::getHalfTy(Context) }, false));
-    injectCRTAlias(*dataM, "__gnu_f2h_ieee", "julia__gnu_f2h_ieee",
-            FunctionType::get(Type::getHalfTy(Context), { Type::getFloatTy(Context) }, false));
-    injectCRTAlias(*dataM, "__truncsfhf2", "julia__gnu_f2h_ieee",
-            FunctionType::get(Type::getHalfTy(Context), { Type::getFloatTy(Context) }, false));
-    injectCRTAlias(*dataM, "__truncdfhf2", "julia__truncdfhf2",
-            FunctionType::get(Type::getHalfTy(Context), { Type::getDoubleTy(Context) }, false));
-
     // do the actual work
     auto add_output = [&] (Module &M, StringRef unopt_bc_Name, StringRef bc_Name, StringRef obj_Name, StringRef asm_Name) {
         preopt.run(M);
         optimizer.run(M);
         postopt.run(M);
+
+        // We would like to emit an alias or an weakref alias to redirect these symbols
+        // but LLVM doesn't let us emit a GlobalAlias to a declaration...
+        // So for now we inject a definition of these functions that calls our runtime
+        // functions. We do so after optimization to avoid cloning these functions.
+        injectCRTAlias(M, "__gnu_h2f_ieee", "julia__gnu_h2f_ieee",
+                FunctionType::get(Type::getFloatTy(Context), { Type::getHalfTy(Context) }, false));
+        injectCRTAlias(M, "__extendhfsf2", "julia__gnu_h2f_ieee",
+                FunctionType::get(Type::getFloatTy(Context), { Type::getHalfTy(Context) }, false));
+        injectCRTAlias(M, "__gnu_f2h_ieee", "julia__gnu_f2h_ieee",
+                FunctionType::get(Type::getHalfTy(Context), { Type::getFloatTy(Context) }, false));
+        injectCRTAlias(M, "__truncsfhf2", "julia__gnu_f2h_ieee",
+                FunctionType::get(Type::getHalfTy(Context), { Type::getFloatTy(Context) }, false));
+        injectCRTAlias(M, "__truncdfhf2", "julia__truncdfhf2",
+                FunctionType::get(Type::getHalfTy(Context), { Type::getDoubleTy(Context) }, false));
+
         if (unopt_bc_fname)
             emit_result(unopt_bc_Archive, unopt_bc_Buffer, unopt_bc_Name, outputs);
         if (bc_fname)
