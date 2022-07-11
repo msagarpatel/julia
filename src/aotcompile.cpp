@@ -33,6 +33,7 @@
 #include <llvm/Transforms/InstCombine/InstCombine.h>
 #include <llvm/Transforms/Scalar/InstSimplifyPass.h>
 #include <llvm/Transforms/Utils/SimplifyCFGOptions.h>
+#include <llvm/Transforms/Utils/ModuleUtils.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Passes/PassPlugin.h>
 #if defined(USE_POLLY)
@@ -441,9 +442,8 @@ static void injectCRTAlias(Module &M, StringRef name, StringRef alias, FunctionT
     if (!target) {
         target = Function::Create(FT, Function::ExternalLinkage, alias, M);
     }
-    // Weak so that this does not get discarded
-    // maybe use llvm.compiler.used instead?
-    Function *interposer = Function::Create(FT, Function::WeakAnyLinkage, name, M);
+    Function *interposer = Function::Create(FT, Function::ExternalLinkage, name, M);
+    appendToCompilerUsed(M, {interposer});
 
     llvm::IRBuilder<> builder(BasicBlock::Create(M.getContext(), "top", interposer));
     SmallVector<Value *, 4> CallArgs;
