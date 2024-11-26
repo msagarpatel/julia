@@ -397,6 +397,16 @@ end
     └ @ Base other.jl:101
     """
 
+    # Lexicographical Ordering of Keywords
+    @test genmsg(Error, "msg", Base, "other.jl", 101, b=1, a="asdf", 1st_quartile=42) ==
+    """
+    ┌ Error: msg
+    │   1st_quartile = 42
+    │   a = asdf
+    │   b = 1
+    └ @ Base other.jl:101
+    """
+
     # nothing values
     @test genmsg(Warn, "msg", nothing, nothing, nothing) ==
     """

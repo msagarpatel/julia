@@ -138,7 +138,7 @@ function handle_message(logger::ConsoleLogger, level::LogLevel, message, _module
         valio = IOContext(IOContext(valbuf, stream),
                           :displaysize => (rows_per_value, dsize[2] - 5),
                           :limit => logger.show_limited)
-        for (key, val) in kwargs
+        for (key, val) in sort!(collect(kwargs))
             key === :maxlog && continue
             showvalue(valio, val)
             vallines = split(String(take!(valbuf)), '\n')
